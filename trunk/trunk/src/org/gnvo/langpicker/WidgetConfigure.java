@@ -32,7 +32,9 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 
+import java.text.Collator;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Locale;
 
@@ -44,7 +46,47 @@ public class WidgetConfigure extends ListActivity{
 	private static final int WARNING_DIALOG = 0;
 	private ListView mListView = null;
 	private int mAppWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
+	private String mLocales[];
 
+	private static class Loc{
+		protected String localizedLanguage = null;
+		protected String localizedCountry = "";	
+		protected Locale locale;
+
+		public Loc(String localizedLanguage, Locale locale) {
+			this.localizedLanguage = localizedLanguage;
+			this.locale = locale;
+		}
+		
+		public void setLocalizedCountry(){
+			this.localizedCountry = locale.getDisplayCountry(locale);
+		}
+		
+		@Override
+		public String toString() {
+			if (localizedCountry.length() > 0)
+				return String.format("%s (%s)", toTitleCase(localizedLanguage), toTitleCase(localizedCountry));
+			else
+				return toTitleCase(localizedLanguage);
+		}
+
+		public Object getLanguageCode() {
+			return locale.getLanguage();
+		}
+
+		public Object getCountryCode() {
+			return locale.getCountry();
+		}
+
+		public Object getlocalizedCountry() {
+			return toTitleCase(localizedCountry);
+		}
+
+		public Object getlocalizedLanguage() {
+			return toTitleCase(localizedLanguage);
+		}
+	}
+	
 	@Override
 	protected Dialog onCreateDialog(int id) {
 		Log.d(LOG_TAG, "dialog id='" + id + "'");
@@ -83,11 +125,11 @@ public class WidgetConfigure extends ListActivity{
 
 		newLocaleButton.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
-				String language =  (String) mListView.getItemAtPosition(mListView.getCheckedItemPosition());
+				String languageCountry =  (String) mListView.getItemAtPosition(mListView.getCheckedItemPosition());
 
-				if (language != null){					
+				if (languageCountry != null){					
 					final Context context = v.getContext();
-					new LangPickerDataAdapter().addWidgetLanguage(context, mAppWidgetId, language.substring(language.lastIndexOf('-')+2));
+					new LangPickerDataAdapter().addWidgetLanguage(context, mAppWidgetId, mLocales[mListView.getCheckedItemPosition()]);
 
 					AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
 					LangPicker.prepareAppWidget(context, appWidgetManager, mAppWidgetId);
@@ -101,7 +143,7 @@ public class WidgetConfigure extends ListActivity{
 					showDialog(WARNING_DIALOG);
 				}
 
-				Log.d(LOG_TAG, "Selected text='" + language + "'");
+				Log.d(LOG_TAG, "Selected text='" + languageCountry + "'");
 
 			}
 		});
@@ -132,23 +174,65 @@ public class WidgetConfigure extends ListActivity{
 	 * 
 	 */
 	private void populateList() {
-		ArrayList<String> data = new ArrayList<String>();
-
 		// Insert all system locales
-		String[] locales = getAssets().getLocales();
-		for (String locale : locales) {
-			if (locale != null && locale.length() > 2) {
-				Locale loc = new Locale(locale);
-				data.add(loc.getDisplayName() + " - " + locale);
+		Log.d(LOG_TAG, "Current locale='" + Locale.getDefault() + "'");
+
+		String[] systemLocales = getAssets().getLocales();
+
+		Arrays.sort(systemLocales);
+
+		Loc[] preprocess = new Loc[systemLocales.length];
+
+		int finalSize = 0;
+		
+		for (String l : systemLocales) {
+			
+			if (l != null && l.length() == 5) {
+				String language = l.substring(0, 2);
+				String country = l.substring(3, 5);
+				Locale locale = new Locale(language, country);
+
+				if (finalSize == 0) {
+					preprocess[finalSize++] = new Loc(locale.getDisplayLanguage(locale), locale);
+				} else {
+					// check previous entry:
+					// same lang and a country -> upgrade to full name and
+					// insert ours with full name
+					// diff lang -> insert ours with lang-only name
+					if (preprocess[finalSize - 1].locale.getLanguage().equals(language)) {
+						preprocess[finalSize] = new Loc(locale.getDisplayLanguage(locale), locale);
+						preprocess[finalSize - 1].setLocalizedCountry();
+						preprocess[finalSize++].setLocalizedCountry();
+					} else {
+						preprocess[finalSize++] = new Loc(locale.getDisplayLanguage(locale), locale);
+					}
+				}
 			}
 		}
-		locales = null;
+		
+		String data[] = new String[finalSize];
+		mLocales = new String[finalSize];
+		for (int i = 0; i < finalSize ; i++) {
+			data[i] = preprocess[i].toString();
+			mLocales[i] =  String.format("%s;%s;%s_%s", 
+					preprocess[i].getlocalizedLanguage(), 
+					preprocess[i].getlocalizedCountry(), 
+					preprocess[i].getLanguageCode(),
+					preprocess[i].getCountryCode());
+		}
 
-		// Sort all locales by language
-		Collections.sort(data);
+		systemLocales = null;
 
 		setListAdapter(new ArrayAdapter<String>(this,
 				android.R.layout.simple_list_item_single_choice, data));
 
 	}
+	
+	private static String toTitleCase(String s) {
+		if (s.length() == 0) {
+			return s;
+		}
+		return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+	}
+
 }

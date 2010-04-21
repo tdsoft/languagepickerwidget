@@ -53,20 +53,24 @@ public class LangPicker extends AppWidgetProvider  {
 	static void prepareAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
 		Log.d(LOG_TAG, "prepareAppWidget");
 		//TODO, create only one LangPickerDataAdapter object for insert(in the configure) and fetch
-		String language = new LangPickerDataAdapter().fetchWidgetLanguage(context, appWidgetId);
+		String[] labelLocale = new LangPickerDataAdapter().fetchWidgetLanguage(context, appWidgetId).split(";");
+		if (labelLocale.length < 3)
+			return;
+		
+        String label = String.format("%s\n%s", labelLocale[0], labelLocale[1]);
+        String locale = labelLocale[2];
 
 		RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget);
 
 		Intent intent = new Intent(context, LocaleChangerReceiver.class);
-		intent.putExtra("language", language);
+		intent.putExtra("locale", locale);
 		// We need to make the this intent unique:
-		intent.setData((Uri.parse("custom://langpicker/language/" + language)));
+		intent.setData((Uri.parse("custom://langpicker/locale/" + locale)));
 
 		PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-		views.setOnClickPendingIntent(R.id.language, pendingIntent);
+		views.setOnClickPendingIntent(R.id.label, pendingIntent);
 
-
-		views.setTextViewText(R.id.language, (new Locale(language).getDisplayLanguage()) + "\n" + language);
+		views.setTextViewText(R.id.label, label);
 
 		appWidgetManager.updateAppWidget(appWidgetId, views);
 	}
@@ -91,15 +95,16 @@ public class LangPicker extends AppWidgetProvider  {
 		public void onReceive(Context context, Intent intent) {
 			//TODO validate extras
 			Bundle extras = intent.getExtras();
-			String language = extras.getString("language");
+			String locale = extras.getString("locale");
 
 			try {
 				IActivityManager am = ActivityManagerNative.getDefault();
 				Configuration config = am.getConfiguration();
 
-				//TODO validate language
-				Locale loc = new Locale(language);
-				config.locale = loc;
+
+	            String[] langCountry = locale.split("_");
+				Locale newLocale = new Locale(langCountry[0], langCountry[1]);
+				config.locale = newLocale;
 
 				config.userSetLocale = true;
 				am.updateConfiguration(config);
