@@ -17,9 +17,6 @@
 
 package org.gnvo.langpicker;
 
-
-import java.util.Locale;
-
 import android.app.ActivityManagerNative;
 import android.app.IActivityManager;
 import android.app.PendingIntent;
