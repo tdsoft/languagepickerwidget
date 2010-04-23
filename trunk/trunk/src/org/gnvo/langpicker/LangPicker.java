@@ -32,13 +32,11 @@ import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
-//import android.util.Log;
 import android.util.Log;
 import android.widget.RemoteViews;
 
 public class LangPicker extends AppWidgetProvider  {
-	private static final String LOG_TAG = "LangPicker";
-
+	protected static final String LOG_TAG = "LangPicker";
 
 	@Override
 	public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -53,27 +51,27 @@ public class LangPicker extends AppWidgetProvider  {
 	static void prepareAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
 		Log.d(LOG_TAG, "prepareAppWidget");
 		//TODO, create only one LangPickerDataAdapter object for insert(in the configure) and fetch
-		String[] labelLocale = new LangPickerDataAdapter().fetchWidgetLanguage(context, appWidgetId).split(";");
-		if (labelLocale.length < 3)
-			return;
+		Loc loc = new Loc(new LangPickerDataAdapter().fetchWidgetLanguage(context, appWidgetId));
+		if (loc.getLocale() == null)
+			return; // Widget created, but not configured yet.
 		
-        String label = String.format("%s\n%s", labelLocale[0], labelLocale[1]);
-        String locale = labelLocale[2];
-
 		RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget);
 
 		Intent intent = new Intent(context, LocaleChangerReceiver.class);
-		intent.putExtra("locale", locale);
+		intent.putExtra("locale", loc.getIetfLanguageTag());
 		// We need to make the this intent unique:
-		intent.setData((Uri.parse("custom://langpicker/locale/" + locale)));
+		intent.setData((Uri.parse("custom://langpicker/locale/" + loc.getIetfLanguageTag())));
 
 		PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 		views.setOnClickPendingIntent(R.id.label, pendingIntent);
+		
+		if (loc.isLocaleCurrentLocale())
+			views.setTextColor(R.id.label, R.color.gray);
 
-		views.setTextViewText(R.id.label, label);
-
+		views.setTextViewText(R.id.label, loc.twoLinesLanguageCountry());
 		appWidgetManager.updateAppWidget(appWidgetId, views);
 	}
+
 
 	public void onReceive(Context context, Intent intent) {
 		final String action = intent.getAction();
@@ -95,16 +93,14 @@ public class LangPicker extends AppWidgetProvider  {
 		public void onReceive(Context context, Intent intent) {
 			//TODO validate extras
 			Bundle extras = intent.getExtras();
-			String locale = extras.getString("locale");
+			String ietfLanguageTag = extras.getString("locale");
 
 			try {
 				IActivityManager am = ActivityManagerNative.getDefault();
 				Configuration config = am.getConfiguration();
-
-
-	            String[] langCountry = locale.split("_");
-				Locale newLocale = new Locale(langCountry[0], langCountry[1]);
-				config.locale = newLocale;
+				
+				Loc newLoc = new Loc(ietfLanguageTag);
+				config.locale = newLoc.getLocale();
 
 				config.userSetLocale = true;
 				am.updateConfiguration(config);

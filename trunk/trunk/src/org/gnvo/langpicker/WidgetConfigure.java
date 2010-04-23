@@ -46,46 +46,8 @@ public class WidgetConfigure extends ListActivity{
 	private static final int WARNING_DIALOG = 0;
 	private ListView mListView = null;
 	private int mAppWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
-	private String mLocales[];
+	private ArrayList<String>  mLocales;
 
-	private static class Loc{
-		protected String localizedLanguage = null;
-		protected String localizedCountry = "";	
-		protected Locale locale;
-
-		public Loc(String localizedLanguage, Locale locale) {
-			this.localizedLanguage = localizedLanguage;
-			this.locale = locale;
-		}
-		
-		public void setLocalizedCountry(){
-			this.localizedCountry = locale.getDisplayCountry(locale);
-		}
-		
-		@Override
-		public String toString() {
-			if (localizedCountry.length() > 0)
-				return String.format("%s (%s)", toTitleCase(localizedLanguage), toTitleCase(localizedCountry));
-			else
-				return toTitleCase(localizedLanguage);
-		}
-
-		public Object getLanguageCode() {
-			return locale.getLanguage();
-		}
-
-		public Object getCountryCode() {
-			return locale.getCountry();
-		}
-
-		public Object getlocalizedCountry() {
-			return toTitleCase(localizedCountry);
-		}
-
-		public Object getlocalizedLanguage() {
-			return toTitleCase(localizedLanguage);
-		}
-	}
 	
 	@Override
 	protected Dialog onCreateDialog(int id) {
@@ -129,7 +91,7 @@ public class WidgetConfigure extends ListActivity{
 
 				if (languageCountry != null){					
 					final Context context = v.getContext();
-					new LangPickerDataAdapter().addWidgetLanguage(context, mAppWidgetId, mLocales[mListView.getCheckedItemPosition()]);
+					new LangPickerDataAdapter().addWidgetLanguage(context, mAppWidgetId, mLocales.get(mListView.getCheckedItemPosition()));
 
 					AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
 					LangPicker.prepareAppWidget(context, appWidgetManager, mAppWidgetId);
@@ -177,62 +139,28 @@ public class WidgetConfigure extends ListActivity{
 		// Insert all system locales
 		Log.d(LOG_TAG, "Current locale='" + Locale.getDefault() + "'");
 
-		String[] systemLocales = getAssets().getLocales();
+		String[] systemLocaleIetfLanguageTags = getAssets().getLocales();
 
-		Arrays.sort(systemLocales);
+		Arrays.sort(systemLocaleIetfLanguageTags);
 
-		Loc[] preprocess = new Loc[systemLocales.length];
-
-		int finalSize = 0;
+        ArrayList<String> data = new ArrayList<String>();
+		mLocales = new ArrayList<String>();
 		
-		for (String l : systemLocales) {
-			
-			if (l != null && l.length() == 5) {
-				String language = l.substring(0, 2);
-				String country = l.substring(3, 5);
-				Locale locale = new Locale(language, country);
-
-				if (finalSize == 0) {
-					preprocess[finalSize++] = new Loc(locale.getDisplayLanguage(locale), locale);
-				} else {
-					// check previous entry:
-					// same lang and a country -> upgrade to full name and
-					// insert ours with full name
-					// diff lang -> insert ours with lang-only name
-					if (preprocess[finalSize - 1].locale.getLanguage().equals(language)) {
-						preprocess[finalSize] = new Loc(locale.getDisplayLanguage(locale), locale);
-						preprocess[finalSize - 1].setLocalizedCountry();
-						preprocess[finalSize++].setLocalizedCountry();
-					} else {
-						preprocess[finalSize++] = new Loc(locale.getDisplayLanguage(locale), locale);
-					}
-				}
+		for (String ietfLanguageTag : systemLocaleIetfLanguageTags) {
+			if (ietfLanguageTag != null && ietfLanguageTag.length() == 5) {
+				Loc loc = new Loc(ietfLanguageTag);
+				
+				mLocales.add(ietfLanguageTag);
+				data.add(loc.oneLineLanguageCountry());
 			}
 		}
 		
-		String data[] = new String[finalSize];
-		mLocales = new String[finalSize];
-		for (int i = 0; i < finalSize ; i++) {
-			data[i] = preprocess[i].toString();
-			mLocales[i] =  String.format("%s;%s;%s_%s", 
-					preprocess[i].getlocalizedLanguage(), 
-					preprocess[i].getlocalizedCountry(), 
-					preprocess[i].getLanguageCode(),
-					preprocess[i].getCountryCode());
-		}
-
-		systemLocales = null;
+		systemLocaleIetfLanguageTags = null;
 
 		setListAdapter(new ArrayAdapter<String>(this,
 				android.R.layout.simple_list_item_single_choice, data));
 
 	}
 	
-	private static String toTitleCase(String s) {
-		if (s.length() == 0) {
-			return s;
-		}
-		return Character.toUpperCase(s.charAt(0)) + s.substring(1);
-	}
 
 }
