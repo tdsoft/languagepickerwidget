@@ -5,18 +5,23 @@
 Because this is a widget, you won't see it on the applications launcher, so to use this app, you need to add it to the home screen. Do as follows:
 
 1. While on a home screen with an empty space, press the menu button and press add:
+
 http://languagepickerwidget.googlecode.com/svn/trunk/wiki/step1.png
 
 Select Widgets:
+
 http://languagepickerwidget.googlecode.com/svn/trunk/wiki/step2.png
 
 Select Language Picker widget:
+
 http://languagepickerwidget.googlecode.com/svn/trunk/wiki/step3.png
 
 Finally select the language that you want to switch to when pressing this widget, and press accept:
+
 http://languagepickerwidget.googlecode.com/svn/trunk/wiki/step4.png
 
 You have successfully setup the widget. You can add as many widgets as you want:
+
 http://languagepickerwidget.googlecode.com/svn/trunk/wiki/step5.png
 
 Now, to change languages, just press one of the widgets.
